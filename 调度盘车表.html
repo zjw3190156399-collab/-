@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>物流调度系统 · 车辆全生命周期任务表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #eef2ff;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            color: #0f172a;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 24px;
+            overflow: hidden;
+        }
+
+        .header-modern {
+            background: white;
+            border-radius: 28px;
+            padding: 16px 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
+            border: 1px solid #eef2ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e293b, #2d3a5e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .brand p {
+            font-size: 0.75rem;
+            color: #5b6e8c;
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .legend-pills {
+            display: flex;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 6px 18px;
+            border-radius: 60px;
+            border: 1px solid #e2e8f0;
+        }
+        .legend-pills span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .status-dot { width: 10px; height: 10px; border-radius: 10px; }
+        .time-card {
+            background: #0f172a;
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #e2e8f0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .fullscreen-trigger {
+            background: #1e293b;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 40px;
+            color: white;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .fullscreen-trigger:hover { background: #334155; }
+
+        .tabs-modern {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            background: #ffffffcc;
+            border: 1px solid #e2e8f0;
+            padding: 8px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #334155;
+        }
+        .tab-btn.active {
+            background: #1e293b;
+            border-color: #1e293b;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .tab-btn:hover:not(.active) { background: #f1f5f9; border-color: #cbd5e1; }
+
+        .search-row {
+            background: white;
+            border-radius: 20px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            border: 1px solid #eef2ff;
+        }
+        .search-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            padding: 5px 16px;
+            border-radius: 40px;
+            border: 1px solid #e2e8f0;
+        }
+        .search-chip label { font-size: 0.7rem; font-weight: 600; color: #475569; }
+        .search-chip input, .search-chip select {
+            border: none;
+            background: transparent;
+            padding: 6px 0;
+            font-size: 0.75rem;
+            outline: none;
+            min-width: 110px;
+        }
+        .clear-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .clear-btn:hover { background: #cbd5e1; }
+        .result-badge {
+            margin-left: auto;
+            font-size: 0.7rem;
+            background: #eef2ff;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+
+        .table-scroll {
+            flex: 1;
+            overflow: auto;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+            border: 1px solid #eef2ff;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            min-width: 1100px;
+        }
+        .data-table th {
+            position: sticky;
+            top: 0;
+            background: #f9fafb;
+            padding: 14px 12px;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 1.5px solid #e2e8f0;
+            z-index: 10;
+        }
+        .data-table td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .col-sno { width: 45px; text-align: center; }
+        .col-chk { width: 35px; text-align: center; }
+        .col-plate { width: 108px; }
+        .col-driver { width: 92px; }
+        .col-route { width: 220px; }
+        .col-time { width: 180px; }
+        .col-state { width: 100px; }
+        .col-remain { width: 115px; }
+        .col-remark { width: 160px; }
+        .col-actions { width: 110px; }
+
+        .editable-cell {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            background: #ffffff;
+        }
+        .editable-cell:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #bfdbfe;
+        }
+        
+        /* 手动时间输入框样式 */
+        .time-manual-input {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            background: #fefefe;
+        }
+        .time-manual-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #bfdbfe;
+        }
+
+        /* 状态框样式 - 更显眼 */
+        .status-badge {
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+            width: 80px;
+            text-align: center;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .status-badge:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-靠台 { background: #dbeafe; color: #1e40af; border-left: 3px solid #1e40af; }
+        .status-装货 { background: #fed7aa; color: #9a3412; border-left: 3px solid #9a3412; }
+        .status-在途 { background: #dcfce7; color: #166534; border-left: 3px solid #166534; }
+        .status-经停 { background: #fef08a; color: #854d0e; border-left: 3px solid #854d0e; }
+        .status-卸货 { background: #fbcfe8; color: #9d174d; border-left: 3px solid #9d174d; }
+        .status-空车 { background: #e0e7ff; color: #3730a3; border-left: 3px solid #3730a3; }
+        .status-异常 { background: #fee2e2; color: #b91c1c; border-left: 3px solid #b91c1c; }
+
+        .time-chip {
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .urgent-red { background: #fecaca; color: #991b1b; }
+        .warn-orange { background: #fed7aa; color: #9a3412; }
+        .warn-yellow { background: #fef08a; color: #854d0e; }
+
+        .remark-input {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 6px 8px;
+            font-size: 0.7rem;
+        }
+
+        .icon-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 30px;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .btn-complete { background: #10b981; color: white; }
+        .btn-complete:hover { background: #059669; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-delete:hover { background: #dc2626; }
+        .btn-reassign { background: #3b82f6; color: white; }
+        .btn-reassign:hover { background: #2563eb; }
+
+        .utility-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .info-pill {
+            background: #e2e8f0;
+            border-radius: 40px;
+            padding: 6px 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-right: auto;
+        }
+        .action-pill {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .action-pill:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .danger-mode { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+        .footer-tip { text-align: center; font-size: 0.65rem; margin-top: 14px; color: #5b6e8c; }
+        .toast-save {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            background: #1e293b;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: 0.2s;
+            pointer-events: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header-modern">
+        <div class="brand">
+            <h1>📦 车辆全生命周期调度</h1>
+            <p>实时追踪 · 批量管理 · 自动持久化</p>
+        </div>
+        <div class="header-actions">
+            <div class="legend-pills">
+                <span><div class="status-dot" style="background:#dbeafe;"></div>靠台</span>
+                <span><div class="status-dot" style="background:#fed7aa;"></div>装货</span>
+                <span><div class="status-dot" style="background:#dcfce7;"></div>在途</span>
+                <span><div class="status-dot" style="background:#fef08a;"></div>经停</span>
+                <span><div class="status-dot" style="background:#fbcfe8;"></div>卸货</span>
+                <span><div class="status-dot" style="background:#e0e7ff;"></div>空车</span>
+                <span><div class="status-dot" style="background:#fee2e2;"></div>异常</span>
+            </div>
+            <div class="time-card" id="liveClock">--:--:--</div>
+            <button class="fullscreen-trigger" id="fullscreenBtn">⛶ 全屏视图</button>
+        </div>
+    </div>
+
+    <div class="tabs-modern">
+        <button class="tab-btn active" data-tab="active">🚚 进行中任务</button>
+        <button class="tab-btn" data-tab="completed">✅ 已完成车辆</button>
+        <button class="tab-btn" data-tab="history">📋 历史归档</button>
+    </div>
+
+    <div id="mainSearchZone" class="search-row">
+        <div class="search-chip"><label>车牌</label><input type="text" id="searchPlate" placeholder="闽A·"></div>
+        <div class="search-chip"><label>司机</label><input type="text" id="searchDriver" placeholder="姓名"></div>
+        <div class="search-chip"><label>线路</label><input type="text" id="searchRoute" placeholder="节点"></div>
+        <div class="search-chip"><label>状态</label><select id="searchStatus"><option value="">全部</option><option>靠台</option><option>装货</option><option>在途</option><option>经停</option><option>卸货</option><option>空车</option><option>异常</option></select></div>
+        <button class="clear-btn" id="clearSearchBtn">清空筛选</button>
+        <div class="result-badge" id="searchCount">共 0 条</div>
+    </div>
+
+    <div id="historySearchZone" class="search-row" style="display:none;">
+        <div class="search-chip"><label>车牌</label><input type="text" id="histSearchPlate" placeholder="车牌号"></div>
+        <div class="search-chip"><label>司机</label><input type="text" id="histSearchDriver" placeholder="司机"></div>
+        <div class="search-chip"><label>线路</label><input type="text" id="histSearchRoute" placeholder="线路"></div>
+        <button class="clear-btn" id="clearHistSearchBtn">清空筛选</button>
+        <div class="result-badge" id="histSearchCount">共 0 条</div>
+    </div>
+
+    <div class="utility-bar" id="batchBar">
+        <div class="info-pill" id="batchInfo">批量模式未开启</div>
+        <button class="action-pill" id="undoBtn">↩️ 撤销</button>
+        <button class="action-pill" id="manualSaveBtn">💾 手动存档</button>
+        <button class="action-pill" id="addVehicleBtn">➕ 新增车辆</button>
+        <button class="action-pill" id="setDefaultBtn">⭐ 存为默认</button>
+        <button class="action-pill" id="resetDefaultBtn">🔄 重置默认</button>
+        <button class="action-pill" id="batchModeBtn">🗑️ 批量删除</button>
+    </div>
+
+    <div class="table-scroll" id="mainTableArea">
+        <table class="data-table" id="vehicleTable">
+            <thead id="dynamicHeader"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="table-scroll" id="historyTableArea" style="display:none;">
+        <table class="data-table" id="historyTable">
+            <thead><tr><th class="col-chk">选择</th><th class="col-sno">序号</th><th>车牌号</th><th>司机</th><th>线路</th><th>计划时间</th><th>完成时间</th><th class="col-actions">操作</th>}</thead>
+            <tbody id="historyBody"></tbody>
+        </table>
+    </div>
+
+    <div class="footer-tip">✨ 所有变动实时保存 · 批量删除支持全部区域 · 密码(222180)重置默认</div>
+    <div class="toast-save" id="globalToast">✓ 已同步</div>
+</div>
+
+<script>
+    const STORAGE = {
+        ACTIVE: 'dispatch_active_v5',
+        COMPLETED: 'dispatch_completed_v5',
+        HISTORY: 'dispatch_history_v5',
+        NEXT_ID: 'dispatch_next_id_v5',
+        HIST_NEXT_ID: 'dispatch_hist_id_v5',
+        DEFAULT_ACTIVE: 'dispatch_default_active_v5',
+        DEFAULT_COMPLETED: 'dispatch_default_completed_v5',
+        DEFAULT_HISTORY: 'dispatch_default_history_v5'
+    };
+
+    let activeTasks = [], completedVehicles = [], historyRecords = [];
+    let nextId = 100, historyNextId = 1000;
+    let currentTab = "active";
+    let batchActive = false;
+    let undoStack = [];
+    let isUndoing = false;
+
+    let searchPlate = "", searchDriver = "", searchRoute = "", searchStatus = "";
+    let histSearchPlate = "", histSearchDriver = "", histSearchRoute = "";
+
+    function showToast(msg) {
+        let t = document.getElementById('globalToast');
+        t.innerText = msg;
+        t.style.opacity = '0.9';
+        setTimeout(() => t.style.opacity = '0', 1200);
+    }
+
+    function saveAllData() {
+        try {
+            localStorage.setItem(STORAGE.ACTIVE, JSON.stringify(activeTasks));
+            localStorage.setItem(STORAGE.COMPLETED, JSON.stringify(completedVehicles));
+            localStorage.setItem(STORAGE.HISTORY, JSON.stringify(historyRecords));
+            localStorage.setItem(STORAGE.NEXT_ID, nextId.toString());
+            localStorage.setItem(STORAGE.HIST_NEXT_ID, historyNextId.toString());
+        } catch(e) { console.warn(e); }
+    }
+
+    function pushToUndo() {
+        if (isUndoing) return;
+        const snapshot = {
+            active: JSON.parse(JSON.stringify(activeTasks)),
+            completed: JSON.parse(JSON.stringify(completedVehicles)),
+            history: JSON.parse(JSON.stringify(historyRecords)),
+            nextId, historyNextId
+        };
+        undoStack.push(snapshot);
+        if (undoStack.length > 40) undoStack.shift();
+    }
+
+    function undo() {
+        if (undoStack.length === 0) { alert("没有可撤销的操作"); return; }
+        isUndoing = true;
+        const last = undoStack.pop();
+        activeTasks = last.active;
+        completedVehicles = last.completed;
+        historyRecords = last.history;
+        nextId = last.nextId;
+        historyNextId = last.historyNextId;
+        saveAllData();
+        fullRenderCurrentTab();
+        isUndoing = false;
+        showToast("已撤销");
+    }
+
+    function formatDateLocal(date) {
+        let y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
+        let h = String(date.getHours()).padStart(2,'0'), mi = String(date.getMinutes()).padStart(2,'0');
+        return `${y}-${m}-${d} ${h}:${mi}:00`;
+    }
+
+    function parseTimeString(timeStr) {
+        if (!timeStr) return null;
+        let cleaned = timeStr.replace(/T/g, ' ');
+        let date = new Date(cleaned.replace(/-/g, '/'));
+        return isNaN(date.getTime()) ? null : date;
+    }
+
+    function setPlanTime(taskId, inputValue) {
+        let task = activeTasks.find(t => t.id === taskId);
+        if (!task) return false;
+        
+        let parsedDate = parseTimeString(inputValue);
+        if (parsedDate) {
+            pushToUndo();
+            let newTimeStr = formatDateLocal(parsedDate);
+            task.targetTimeStr = newTimeStr;
+            task.alerted = false;
+            saveAllData();
+            fullRenderCurrentTab();
+            showToast(`计划时间已更新为 ${newTimeStr.slice(0,16)}`);
+            return true;
+        } else {
+            alert(`无法解析时间格式: ${inputValue}\n请使用格式: 2024-12-25 14:30 或 2024/12/25 14:30`);
+            return false;
+        }
+    }
+
+    function getRemainingInfo(targetTime, now) {
+        let target = new Date(targetTime.replace(/-/g, '/'));
+        let remain = Math.floor((target - now) / 60000);
+        if (remain <= 0) return { text: `超时 ${Math.abs(remain)}分钟`, cls: 'urgent-red' };
+        if (remain <= 30) return { text: `剩余 ${remain}分钟`, cls: 'urgent-red' };
+        if (remain <= 60) return { text: `剩余 ${remain}分钟`, cls: 'warn-orange' };
+        if (remain < 1440) return { text: `剩余 ${Math.floor(remain/60)}h${remain%60}m`, cls: '' };
+        return { text: `剩余 ${Math.floor(remain/1440)}天`, cls: '' };
+    }
+
+    function checkAndAlert(now) {
+        for (let t of activeTasks) {
+            let target = new Date(t.targetTimeStr.replace(/-/g, '/'));
+            if (now >= target && !t.alerted) {
+                t.alerted = true;
+                saveAllData();
+                alert(`⏰ 节点时间已到！\n🚛 ${t.plate} | ${t.route || '待定线路'}`);
+            }
+        }
+    }
+
+    function addNewVehicle() {
+        pushToUndo();
+        let defaultDate = new Date();
+        defaultDate.setTime(defaultDate.getTime() + 3600000);
+        let newTask = {
+            id: nextId++,
+            plate: "新A·00000",
+            driver: "",
+            route: "",
+            targetTimeStr: formatDateLocal(defaultDate),
+            status: "在途",
+            alerted: false,
+            remark: ""
+        };
+        activeTasks.unshift(newTask);
+        saveAllData();
+        fullRenderCurrentTab();
+        showToast("已新增车辆");
+    }
+
+    function completeTask(taskId) {
+        let idx = activeTasks.findIndex(t => t.id === taskId);
+        if (idx === -1) return;
+        pushToUndo();
+        let task = activeTasks[idx];
+        let nowStr = formatDateLocal(new Date());
+        historyRecords.unshift({
+            id: historyNextId++,
+            plate: task.plate,
+            driver: task.driver,
+            route: task.route,
+            targetTimeStr: task.targetTimeStr,
+            completedAt: nowStr
+        });
+        completedVehicles.unshift({
+            id: nextId++,
+            plate: task.plate,
+            driver: task.driver,
+            route: task.route,
+            targetTimeStr: task.targetTimeStr,
+            status: "空车",
+            remark: "",
+            completedAt: nowStr
+        });
+        activeTasks.splice(idx, 1);
+        saveAllData();
+        fullRenderCurrentTab();
+        alert(`✅ 任务 "${task.plate}" 已完成`);
+    }
+
+    function reassignVehicle(vehicleId) {
+        let idx = completedVehicles.findIndex(v => v.id === vehicleId);
+        if (idx === -1) return;
+        let vehicle = completedVehicles[idx];
+        if (vehicle.status !== "空车") {
+            alert(`车辆状态为【${vehicle.status}】，请先改为空车`);
+            return;
+        }
+        let newRoute = prompt("请输入新的线路/节点名称:", vehicle.route || "");
+        if (!newRoute) return;
+        let defaultDate = new Date();
+        defaultDate.setTime(defaultDate.getTime() + 3600000);
+        let newTimeInput = prompt("计划到达时间 (格式: YYYY-MM-DD HH:MM)", formatDateLocal(defaultDate).slice(0,16));
+        let finalTime = formatDateLocal(defaultDate);
+        if (newTimeInput) {
+            let testDate = parseTimeString(newTimeInput);
+            if (testDate) finalTime = formatDateLocal(testDate);
+        }
+        pushToUndo();
+        activeTasks.unshift({
+            id: nextId++,
+            plate: vehicle.plate,
+            driver: vehicle.driver,
+            route: newRoute,
+            targetTimeStr: finalTime,
+            status: "在途",
+            alerted: false,
+            remark: ""
+        });
+        completedVehicles.splice(idx, 1);
+        saveAllData();
+        fullRenderCurrentTab();
+        alert(`✅ 已重新派车：${vehicle.plate}`);
+    }
+
+    function deleteTask(taskId, isCompleted = false) {
+        if (!confirm("确认删除该任务吗？")) return;
+        pushToUndo();
+        if (isCompleted) completedVehicles = completedVehicles.filter(v => v.id !== taskId);
+        else activeTasks = activeTasks.filter(t => t.id !== taskId);
+        saveAllData();
+        fullRenderCurrentTab();
+    }
+
+    function deleteHistoryRecord(historyId) {
+        if (!confirm("确认删除这条历史记录吗？")) return;
+        pushToUndo();
+        historyRecords = historyRecords.filter(r => r.id !== historyId);
+        saveAllData();
+        renderHistory();
+    }
+
+    function updateTaskField(itemId, field, value, isCompleted) {
+        let targetArr = isCompleted ? completedVehicles : activeTasks;
+        let item = targetArr.find(x => x.id === itemId);
+        if (!item) return;
+        pushToUndo();
+        if (field === 'targetTimeStr') {
+            let parsed = parseTimeString(value);
+            if (parsed) {
+                item.targetTimeStr = formatDateLocal(parsed);
+                item.alerted = false;
+            }
+        } else if (field === 'status') {
+            item.status = value;
+        } else if (field === 'plate') {
+            item.plate = value;
+        } else if (field === 'driver') {
+            item.driver = value;
+        } else if (field === 'route') {
+            item.route = value;
+        } else if (field === 'remark') {
+            item.remark = value;
+        }
+        saveAllData();
+        fullRenderCurrentTab();
+    }
+
+    function updateCompletedStatus(vehicleId, newStatus) {
+        let vehicle = completedVehicles.find(v => v.id === vehicleId);
+        if (vehicle) {
+            pushToUndo();
+            vehicle.status = newStatus;
+            saveAllData();
+            fullRenderCurrentTab();
+        }
+    }
+
+    function batchDeleteSelected(ids, isCompletedMode, isHistoryMode = false) {
+        if (ids.length === 0) { alert("请先勾选要删除的记录"); return; }
+        if (!confirm(`确认删除 ${ids.length} 条记录吗？`)) return;
+        pushToUndo();
+        if (isHistoryMode) historyRecords = historyRecords.filter(r => !ids.includes(r.id));
+        else if (isCompletedMode) completedVehicles = completedVehicles.filter(v => !ids.includes(v.id));
+        else activeTasks = activeTasks.filter(t => !ids.includes(t.id));
+        saveAllData();
+        fullRenderCurrentTab();
+    }
+
+    function fullRenderCurrentTab() {
+        if (currentTab === 'history') {
+            document.getElementById('mainTableArea').style.display = 'none';
+            document.getElementById('historyTableArea').style.display = 'block';
+            document.getElementById('mainSearchZone').style.display = 'none';
+            document.getElementById('historySearchZone').style.display = 'flex';
+            renderHistory();
+        } else {
+            document.getElementById('mainTableArea').style.display = 'block';
+            document.getElementById('historyTableArea').style.display = 'none';
+            document.getElementById('mainSearchZone').style.display = 'flex';
+            document.getElementById('historySearchZone').style.display = 'none';
+            renderActiveOrCompleted();
+        }
+    }
+
+    function renderActiveOrCompleted() {
+        let now = Date.now();
+        let isCompletedView = (currentTab === "completed");
+        let rawList = isCompletedView ? completedVehicles : activeTasks;
+        
+        let filtered = rawList.filter(item => {
+            if (searchPlate && !item.plate.includes(searchPlate)) return false;
+            if (searchDriver && !(item.driver || '').includes(searchDriver)) return false;
+            if (searchRoute && !(item.route || '').includes(searchRoute)) return false;
+            if (searchStatus && item.status !== searchStatus) return false;
+            return true;
+        });
+        
+        document.getElementById('searchCount').innerText = `共 ${filtered.length} 条`;
+        
+        let checkboxTh = batchActive ? `<th class="col-chk"><input type="checkbox" id="selectAllCheckbox"></th>` : '';
+        let headerHtml = `<tr>${checkboxTh}<th class="col-sno">序号</th><th class="col-plate">车牌号 ✎</th><th class="col-driver">司机 ✎</th><th class="col-route">线路/节点 ✎</th><th class="col-time">计划时间 ✎</th><th class="col-state">状态 ✎</th><th class="col-remain">${isCompletedView ? '完成时间' : '剩余时间'}</th>${isCompletedView ? '<th class="col-remark">备注 ✎</th>' : ''}<th class="col-actions">操作</th></tr>`;
+        document.getElementById('dynamicHeader').innerHTML = headerHtml;
+        
+        let tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        
+        filtered.forEach((item, idx) => {
+            let remainInfo = isCompletedView 
+                ? { text: item.completedAt ? item.completedAt.slice(5,16) : "已完成", cls: '' }
+                : getRemainingInfo(item.targetTimeStr, now);
+            
+            let statusSelect = `<select class="status-badge status-${item.status}" data-id="${item.id}" data-field="status" data-comp="${isCompletedView}">${["靠台","装货","在途","经停","卸货","空车","异常"].map(s => `<option ${item.status === s ? 'selected' : ''} value="${s}">${s}</option>`).join('')}</select>`;
+            
+            let row = tbody.insertRow();
+            let colIdx = 0;
+            
+            if (batchActive) {
+                let chkCell = row.insertCell(colIdx++);
+                chkCell.className = 'col-chk';
+                chkCell.innerHTML = `<input type="checkbox" class="rowCheckbox" data-id="${item.id}">`;
+            }
+            
+            row.insertCell(colIdx++).innerHTML = idx + 1;
+            row.insertCell(colIdx++).innerHTML = `<input class="editable-cell" data-id="${item.id}" data-field="plate" data-comp="${isCompletedView}" value="${escapeHtml(item.plate)}">`;
+            row.insertCell(colIdx++).innerHTML = `<input class="editable-cell" data-id="${item.id}" data-field="driver" data-comp="${isCompletedView}" value="${escapeHtml(item.driver || '')}">`;
+            row.insertCell(colIdx++).innerHTML = `<input class="editable-cell" data-id="${item.id}" data-field="route" data-comp="${isCompletedView}" value="${escapeHtml(item.route || '')}">`;
+            
+            // 手动输入时间框（无日历）
+            if (!isCompletedView) {
+                row.insertCell(colIdx++).innerHTML = `<input type="text" class="time-manual-input" data-id="${item.id}" data-field="targetTime" data-comp="false" value="${item.targetTimeStr.slice(0,16).replace('T',' ')}" placeholder="YYYY-MM-DD HH:MM">`;
+            } else {
+                row.insertCell(colIdx++).innerHTML = `<span>${item.targetTimeStr.slice(0,16).replace('T',' ')}</span>`;
+            }
+            
+            row.insertCell(colIdx++).innerHTML = statusSelect;
+            row.insertCell(colIdx++).innerHTML = `<div class="time-chip ${remainInfo.cls}" data-time-cell="true" data-task-id="${item.id}">${remainInfo.text}</div>`;
+            
+            if (isCompletedView) {
+                row.insertCell(colIdx++).innerHTML = `<input class="remark-input" data-id="${item.id}" data-field="remark" data-comp="true" value="${escapeHtml(item.remark || '')}" placeholder="备注">`;
+            }
+            
+            let actionHtml = isCompletedView 
+                ? `<button class="icon-btn btn-reassign" data-action="reassign" data-id="${item.id}">🔄 派车</button><button class="icon-btn btn-delete" data-action="delete" data-id="${item.id}" data-comp="true">🗑️</button>`
+                : `<button class="icon-btn btn-complete" data-action="complete" data-id="${item.id}">✅ 完成</button><button class="icon-btn btn-delete" data-action="delete" data-id="${item.id}" data-comp="false">🗑️</button>`;
+            row.insertCell(colIdx++).innerHTML = actionHtml;
+        });
+        
+        attachMainEvents();
+        if (batchActive && !isCompletedView) {
+            let selectAll = document.getElementById('selectAllCheckbox');
+            if (selectAll) selectAll.onchange = (e) => document.querySelectorAll('.rowCheckbox').forEach(cb => cb.checked = e.target.checked);
+        }
+    }
+
+    function renderHistory() {
+        let filtered = historyRecords.filter(r => {
+            if (histSearchPlate && !r.plate.includes(histSearchPlate)) return false;
+            if (histSearchDriver && !(r.driver || '').includes(histSearchDriver)) return false;
+            if (histSearchRoute && !(r.route || '').includes(histSearchRoute)) return false;
+            return true;
+        });
+        document.getElementById('histSearchCount').innerText = `共 ${filtered.length} 条`;
+        
+        let tbody = document.getElementById('historyBody');
+        tbody.innerHTML = '';
+        
+        filtered.forEach((rec, idx) => {
+            let row = tbody.insertRow();
+            row.insertCell(0).innerHTML = `<input type="checkbox" class="historyCheckbox" data-id="${rec.id}">`;
+            row.insertCell(1).innerHTML = idx + 1;
+            row.insertCell(2).innerHTML = escapeHtml(rec.plate);
+            row.insertCell(3).innerHTML = escapeHtml(rec.driver || '');
+            row.insertCell(4).innerHTML = escapeHtml(rec.route || '');
+            row.insertCell(5).innerHTML = rec.targetTimeStr.slice(0,16).replace('T', ' ');
+            row.insertCell(6).innerHTML = rec.completedAt.slice(0,16);
+            row.insertCell(7).innerHTML = `<button class="icon-btn btn-delete" data-history-id="${rec.id}">🗑️ 删除</button>`;
+        });
+        
+        document.querySelectorAll('[data-history-id]').forEach(btn => {
+            btn.onclick = () => deleteHistoryRecord(parseInt(btn.getAttribute('data-history-id')));
+        });
+    }
+
+    function attachMainEvents() {
+        // 可编辑输入框（车牌、司机、线路、计划时间）
+        document.querySelectorAll('.editable-cell, .time-manual-input').forEach(inp => {
+            inp.onchange = (e) => {
+                let id = parseInt(inp.dataset.id);
+                let field = inp.dataset.field;
+                let isComp = inp.dataset.comp === 'true';
+                if (field === 'targetTime') {
+                    let parsed = parseTimeString(inp.value);
+                    if (parsed) {
+                        updateTaskField(id, 'targetTimeStr', inp.value, isComp);
+                    } else {
+                        alert(`时间格式错误: ${inp.value}\n请使用格式: 2024-12-25 14:30`);
+                        inp.value = activeTasks.find(t => t.id === id)?.targetTimeStr.slice(0,16) || '';
+                    }
+                } else {
+                    updateTaskField(id, field, inp.value, isComp);
+                }
+            };
+        });
+        
+        // 状态下拉
+        document.querySelectorAll('.status-badge').forEach(sel => {
+            sel.onchange = (e) => {
+                let id = parseInt(sel.dataset.id);
+                let isComp = sel.dataset.comp === 'true';
+                if (isComp) updateCompletedStatus(id, sel.value);
+                else updateTaskField(id, 'status', sel.value, false);
+            };
+        });
+        
+        // 操作按钮
+        document.querySelectorAll('[data-action="complete"]').forEach(btn => btn.onclick = () => completeTask(parseInt(btn.dataset.id)));
+        document.querySelectorAll('[data-action="delete"]').forEach(btn => btn.onclick = () => deleteTask(parseInt(btn.dataset.id), btn.dataset.comp === 'true'));
+        document.querySelectorAll('[data-action="reassign"]').forEach(btn => btn.onclick = () => reassignVehicle(parseInt(btn.dataset.id)));
+        document.querySelectorAll('.remark-input').forEach(inp => inp.onchange = (e) => updateTaskField(parseInt(inp.dataset.id), 'remark', inp.value, true));
+    }
+
+    function toggleBatchMode() {
+        batchActive = !batchActive;
+        let btn = document.getElementById('batchModeBtn');
+        let info = document.getElementById('batchInfo');
+        if (batchActive) {
+            btn.classList.add('danger-mode');
+            btn.innerText = '✅ 确认删除';
+            info.innerText = '勾选记录后点击确认删除';
+        } else {
+            btn.classList.remove('danger-mode');
+            btn.innerText = '🗑️ 批量删除';
+            info.innerText = '批量模式未开启';
+        }
+        fullRenderCurrentTab();
+    }
+
+    function executeBatchDelete() {
+        if (!batchActive) { toggleBatchMode(); return; }
+        let ids = [];
+        if (currentTab === 'history') {
+            document.querySelectorAll('.historyCheckbox:checked').forEach(cb => ids.push(parseInt(cb.dataset.id)));
+        } else {
+            document.querySelectorAll('.rowCheckbox:checked').forEach(cb => ids.push(parseInt(cb.dataset.id)));
+        }
+        if (ids.length === 0) { alert('请先勾选要删除的记录'); return; }
+        if (currentTab === 'history') batchDeleteSelected(ids, false, true);
+        else batchDeleteSelected(ids, currentTab === 'completed', false);
+        batchActive = false;
+        document.getElementById('batchModeBtn').classList.remove('danger-mode');
+        document.getElementById('batchModeBtn').innerText = '🗑️ 批量删除';
+        document.getElementById('batchInfo').innerText = '批量模式未开启';
+        fullRenderCurrentTab();
+    }
+
+    function initMockData() {
+        let now = new Date();
+        activeTasks = [
+            { id: nextId++, plate: "闽CA0001", driver: "张师傅", route: "上海嘉定仓库", targetTimeStr: formatDateLocal(new Date(now.getTime() + 3600000)), status: "在途", alerted: false, remark: "" },
+            { id: nextId++, plate: "闽CB0023", driver: "李国栋", route: "苏州物流园", targetTimeStr: formatDateLocal(new Date(now.getTime() + 7200000)), status: "在途", alerted: false, remark: "" }
+        ];
+        completedVehicles = [];
+        historyRecords = [];
+    }
+
+    function loadSavedData() {
+        let savedActive = localStorage.getItem(STORAGE.ACTIVE);
+        if (savedActive) {
+            activeTasks = JSON.parse(savedActive);
+            completedVehicles = JSON.parse(localStorage.getItem(STORAGE.COMPLETED) || '[]');
+            historyRecords = JSON.parse(localStorage.getItem(STORAGE.HISTORY) || '[]');
+            nextId = parseInt(localStorage.getItem(STORAGE.NEXT_ID) || '200');
+            historyNextId = parseInt(localStorage.getItem(STORAGE.HIST_NEXT_ID) || '2000');
+        } else {
+            initMockData();
+            saveAllData();
+        }
+    }
+
+    function setCurrentAsDefault() {
+        let pwd = prompt("设置当前数据为默认需要密码:", "");
+        if (pwd !== "222180") { alert("密码错误！"); return; }
+        localStorage.setItem(STORAGE.DEFAULT_ACTIVE, JSON.stringify(activeTasks));
+        localStorage.setItem(STORAGE.DEFAULT_COMPLETED, JSON.stringify(completedVehicles));
+        localStorage.setItem(STORAGE.DEFAULT_HISTORY, JSON.stringify(historyRecords));
+        alert("已将当前数据设为默认！");
+    }
+
+    function resetToDefault() {
+        let pwd = prompt("重置默认数据需要密码:", "");
+        if (pwd !== "222180") { alert("密码错误！"); return; }
+        let defaultActive = localStorage.getItem(STORAGE.DEFAULT_ACTIVE);
+        if (defaultActive) {
+            activeTasks = JSON.parse(defaultActive);
+            completedVehicles = JSON.parse(localStorage.getItem(STORAGE.DEFAULT_COMPLETED) || '[]');
+            historyRecords = JSON.parse(localStorage.getItem(STORAGE.DEFAULT_HISTORY) || '[]');
+            saveAllData();
+            pushToUndo();
+            fullRenderCurrentTab();
+            alert("已恢复默认数据");
+        } else {
+            alert("未设置默认数据，请先点击「存为默认」");
+        }
+    }
+
+    let clockInterval = null;
+    function startRealTimeCountdown() {
+        if (clockInterval) clearInterval(clockInterval);
+        clockInterval = setInterval(() => {
+            if (currentTab === 'active') {
+                let now = Date.now();
+                checkAndAlert(now);
+                let timeCells = document.querySelectorAll('[data-time-cell="true"]');
+                for (let cell of timeCells) {
+                    let taskId = parseInt(cell.getAttribute('data-task-id'));
+                    let task = activeTasks.find(t => t.id === taskId);
+                    if (task) {
+                        let info = getRemainingInfo(task.targetTimeStr, now);
+                        cell.innerHTML = info.text;
+                        cell.className = `time-chip ${info.cls}`;
+                    }
+                }
+            }
+            let nowDate = new Date();
+            document.getElementById('liveClock').innerHTML = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,'0')}-${String(nowDate.getDate()).padStart(2,'0')} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}:${String(nowDate.getSeconds()).padStart(2,'0')}`;
+        }, 1000);
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        batchActive = false;
+        document.getElementById('batchModeBtn').classList.remove('danger-mode');
+        document.getElementById('batchModeBtn').innerText = '🗑️ 批量删除';
+        document.getElementById('batchInfo').innerText = '批量模式未开启';
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tab) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        fullRenderCurrentTab();
+    }
+
+    function fullscreen() { document.documentElement.requestFullscreen(); }
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]); }
+
+    function init() {
+        loadSavedData();
+        pushToUndo();
+        fullRenderCurrentTab();
+        startRealTimeCountdown();
+        
+        document.getElementById('addVehicleBtn').onclick = addNewVehicle;
+        document.getElementById('undoBtn').onclick = undo;
+        document.getElementById('manualSaveBtn').onclick = () => { saveAllData(); showToast("手动保存完成"); };
+        document.getElementById('setDefaultBtn').onclick = setCurrentAsDefault;
+        document.getElementById('resetDefaultBtn').onclick = resetToDefault;
+        document.getElementById('batchModeBtn').onclick = executeBatchDelete;
+        document.getElementById('fullscreenBtn').onclick = fullscreen;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => switchTab(btn.dataset.tab));
+        
+        document.getElementById('searchPlate').oninput = () => { searchPlate = document.getElementById('searchPlate').value; fullRenderCurrentTab(); };
+        document.getElementById('searchDriver').oninput = () => { searchDriver = document.getElementById('searchDriver').value; fullRenderCurrentTab(); };
+        document.getElementById('searchRoute').oninput = () => { searchRoute = document.getElementById('searchRoute').value; fullRenderCurrentTab(); };
+        document.getElementById('searchStatus').onchange = () => { searchStatus = document.getElementById('searchStatus').value; fullRenderCurrentTab(); };
+        document.getElementById('clearSearchBtn').onclick = () => {
+            document.getElementById('searchPlate').value = '';
+            document.getElementById('searchDriver').value = '';
+            document.getElementById('searchRoute').value = '';
+            document.getElementById('searchStatus').value = '';
+            searchPlate = searchDriver = searchRoute = searchStatus = '';
+            fullRenderCurrentTab();
+        };
+        
+        document.getElementById('histSearchPlate').oninput = () => { histSearchPlate = document.getElementById('histSearchPlate').value; renderHistory(); };
+        document.getElementById('histSearchDriver').oninput = () => { histSearchDriver = document.getElementById('histSearchDriver').value; renderHistory(); };
+        document.getElementById('histSearchRoute').oninput = () => { histSearchRoute = document.getElementById('histSearchRoute').value; renderHistory(); };
+        document.getElementById('clearHistSearchBtn').onclick = () => {
+            document.getElementById('histSearchPlate').value = '';
+            document.getElementById('histSearchDriver').value = '';
+            document.getElementById('histSearchRoute').value = '';
+            histSearchPlate = histSearchDriver = histSearchRoute = '';
+            renderHistory();
+        };
+    }
+    
+    window.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('beforeunload', () => { if (clockInterval) clearInterval(clockInterval); });
+</script>
+</body>
+</html>
